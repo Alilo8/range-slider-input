@@ -27,7 +27,7 @@
     "budo": "^11.8.4"
   },
   "dependencies": {
-    "input-integer-haz": "^0.0.1",
-    "range-slider-haz": "^0.0.1"
+    "input-integer-haz": "^0.0.2",
+    "range-slider-haz": "^0.0.2"
   }
 }

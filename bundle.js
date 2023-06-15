@@ -1,12 +1,32 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+const range_slider_input = require('..');
+
+const opts = { min: 0, max: 10 };
+const rsi = range_slider_input(opts)
+
+document.body.append(rsi);
+
+},{"..":4}],2:[function(require,module,exports){
 module.exports = inputInteger
 
 const sheet = new CSSStyleSheet;
 const theme = get_theme();
 sheet.replaceSync(theme);
 
-function inputInteger (opts, notify) {
+let id = 0;
+
+function inputInteger (opts, protocol) {
     const { min, max } = opts;
+    const name = `input-integer-${id++}`;
+
+    const notify = protocol({ from: name }, listen);
+    function listen(message){
+        const { type, data } = message;
+        if (type === 'update'){
+            input.value = data;
+        }
+    }
+
     const el = document.createElement('div');
     const shadow = el.attachShadow({ mode: 'closed'});
     const input = document.createElement('input');
@@ -28,7 +48,7 @@ function inputInteger (opts, notify) {
         if(val>input.max) input.value = input.max;
         else if(len === min_len && val<input.min) input.value = input.min;
     
-        notify({ type: 'update', body: val});
+        notify({ from: name, type: 'update', data: val});
     }
     function handle_onblur(e, input){
         const val = Number(e.target.value);
@@ -78,19 +98,24 @@ function get_theme () {
 }
 
 
-},{}],2:[function(require,module,exports){
-const range_slider_input = require('..');
-
-const opts = { min: 0, max: 10 };
-const rsi = range_slider_input(opts)
-
-document.body.append(rsi);
-
-},{"..":4}],3:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 module.exports = rangeSlider;
 
-function rangeSlider (opts) {
+let id = 0;
+
+function rangeSlider (opts, protocol) {
     const {min = 0, max = 1000} = opts;
+    const name = `range-${id++}`;
+
+    const notify = protocol({ from: name }, listen);
+    function listen (message) {
+        const { type, data } = message;
+        if (type === 'update'){
+            input.value = data
+            fill.style.width = `${(data/max)*100}%`;
+            input.focus();
+        } 
+    }
     const el = document.createElement('div');
     el.classList.add('container')
     const shadow = el.attachShadow({mode: 'closed'});
@@ -123,6 +148,7 @@ function rangeSlider (opts) {
     function handle_input (e) {
         const val = Number(e.target.value);
         fill.style.width = `${(val/max)*100}%`;
+        notify({ from: name, type: 'update', data: val });
     }
 }
 
@@ -227,25 +253,54 @@ const integer = require('input-integer-haz');
 module.exports = range_slider_integer
 
 function range_slider_integer (opts) {
+    const state = {
+
+    }
+
     const el = document.createElement('div');
     const shadow = el.attachShadow({mode: 'closed'});
     
+    const rsi = document.createElement('div');
+    rsi.classList.add('rsi');
 
-    const range_slider = range(opts, listen);
-    const input_integer = integer(opts, listen);
+    const range_slider = range(opts, protocol);
+    const input_integer = integer(opts, protocol);
 
-    const output = document.createElement('div');
-    output.innerText = 0;
+    rsi.append(range_slider, input_integer);
 
-    shadow.append(range_slider, input_integer, output);
+    const style = document.createElement('style');
+    style.textContent = get_theme();
+
+    shadow.append(rsi, style);
 
     return el;
 
+    function protocol (message, notify) {
+        const { from } = message;
+        state[from] = { value: 0, notify };
+        return listen
+    }
+
     function listen (message) {
-        console.log(message)
-        const { type, body } = message;
-        if (type === 'update') 
-            output.innerText = body
+        const { from, type, data } = message;
+        state[from].value = data;
+        if (type === 'update') {
+            let notify
+            if (from === 'range-0') notify = state['input-integer-0'].notify
+            else if (from === 'input-integer-0') notify = state['range-0'].notify
+            notify({type, data})
+        }
+    }
+    function get_theme () {
+        return `
+            .rsi {
+                padding: 5%;
+                diplay: grid;
+                grid-template-columns: 8fr 1fr;
+                align-items: center;
+                justify-items: center;
+            }
+        `
     }
 }
-},{"input-integer-haz":1,"range-slider-haz":3}]},{},[2]);
+},{"input-integer-haz":2,"range-slider-haz":3}]},{},[1]);
